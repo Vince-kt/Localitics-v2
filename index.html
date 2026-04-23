@@ -1,0 +1,227 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Localytics | Edge Sovereignty Engine</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;700&display=swap');
+        
+        :root {
+            --machine-black: #121212;
+            --engine-grey: #1e1e1e;
+            --safety-orange: #fe8019; /* Gruvbox Orange */
+            --gear-yellow: #fabd2f;   /* Gruvbox Yellow */
+            --metal-border: #3c3836;
+        }
+
+        body {
+            background-color: var(--machine-black);
+            color: #ebdbb2;
+            font-family: 'JetBrains Mono', monospace;
+            border: 8px solid var(--metal-border);
+            min-height: 100vh;
+        }
+
+        .engine-card {
+            background: var(--engine-grey);
+            border: 1px solid var(--metal-border);
+            box-shadow: 4px 4px 0px #000;
+        }
+
+        input {
+            background: #282828;
+            border: 1px solid var(--metal-border);
+            color: var(--gear-yellow);
+            padding: 8px;
+        }
+
+        input:focus {
+            outline: 2px solid var(--safety-orange);
+        }
+
+        .status-blink {
+            width: 10px;
+            height: 10px;
+            background-color: #b8bb26;
+            border-radius: 50%;
+            display: inline-block;
+            animation: blink 1.5s infinite;
+        }
+
+        @keyframes blink {
+            0% { opacity: 1; }
+            50% { opacity: 0.3; }
+            100% { opacity: 1; }
+        }
+    </style>
+</head>
+<body class="p-6">
+
+    <div class="flex justify-between items-center mb-8 border-b-2 border-metal-border pb-4">
+        <div>
+            <h1 class="text-3xl font-bold tracking-tighter" style="color: var(--safety-orange)">LOCALYTICS_v1.0</h1>
+            [span_1](start_span)<p class="text-xs opacity-60 uppercase">Sub-theme: High-Performance Edge Sovereignty[span_1](end_span)</p>
+        </div>
+        <div class="text-right">
+            <div class="text-xs uppercase mb-1">System Status</div>
+            <div class="text-sm font-bold">
+                <span class="status-blink mr-2"></span> 
+                [span_2](start_span)IMMUNE TO GLOBAL OUTAGES[span_2](end_span)
+            </div>
+        </div>
+    </div>
+
+    <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+        
+        <div class="engine-card p-6 rounded-sm lg:col-span-1">
+            <h2 class="text-xl mb-4 border-l-4 border-orange-600 pl-3 font-bold">DATA_INPUT</h2>
+            <div id="input-container" class="space-y-6">
+                <div class="platform-group">
+                    <label class="block text-xs uppercase mb-2 text-gray-400">TikTok Engine</label>
+                    <div class="grid grid-cols-2 gap-2">
+                        <input type="number" id="tk-views" placeholder="Views" class="w-full" oninput="calculate()">
+                        <input type="number" id="tk-rev" placeholder="Revenue ($)" class="w-full" oninput="calculate()">
+                    </div>
+                </div>
+                <div class="platform-group">
+                    <label class="block text-xs uppercase mb-2 text-gray-400">Instagram Engine</label>
+                    <div class="grid grid-cols-2 gap-2">
+                        <input type="number" id="ig-views" placeholder="Views" class="w-full" oninput="calculate()">
+                        <input type="number" id="ig-rev" placeholder="Revenue ($)" class="w-full" oninput="calculate()">
+                    </div>
+                </div>
+                <div class="platform-group">
+                    <label class="block text-xs uppercase mb-2 text-gray-400">YouTube Engine</label>
+                    <div class="grid grid-cols-2 gap-2">
+                        <input type="number" id="yt-views" placeholder="Views" class="w-full" oninput="calculate()">
+                        <input type="number" id="yt-rev" placeholder="Revenue ($)" class="w-full" oninput="calculate()">
+                    </div>
+                </div>
+            </div>
+            <button onclick="resetData()" class="mt-8 text-xs underline opacity-50 hover:opacity-100 uppercase">Wipe Local Storage</button>
+        </div>
+
+        <div class="lg:col-span-2 space-y-6">
+            
+            <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+                <div class="engine-card p-4">
+                    <div class="text-xs uppercase opacity-60">Total Revenue</div>
+                    <div id="total-revenue" class="text-3xl font-bold">$0.00</div>
+                </div>
+                <div class="engine-card p-4">
+                    <div class="text-xs uppercase opacity-60">Efficiency Leader</div>
+                    <div id="efficiency-leader" class="text-xl font-bold text-orange-500">N/A</div>
+                </div>
+                <div class="engine-card p-4" style="border-color: var(--safety-orange)">
+                    <div class="text-xs uppercase opacity-60">Latency Status</div>
+                    <div class="text-xl font-bold">ZERO_MS</div>
+                </div>
+            </div>
+
+            <div class="engine-card p-6">
+                <h2 class="text-xl mb-4 font-bold uppercase">Revenue_Comparison_Graph</h2>
+                <div class="h-64">
+                    <canvas id="revenueChart"></canvas>
+                </div>
+            </div>
+
+            <div class="engine-card p-6 bg-black">
+                <h2 class="text-xl mb-2 font-bold text-yellow-500 uppercase font-bold">// LOCAL_INSIGHTS</h2>
+                <p id="insight-text" class="text-sm leading-relaxed italic">
+                    Engine standby. Feed data into the machine to generate local-first financial intelligence...
+                </p>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        let chart;
+
+        // Initialize Chart
+        function initChart() {
+            const ctx = document.getElementById('revenueChart').getContext('2d');
+            chart = new Chart(ctx, {
+                type: 'bar',
+                data: {
+                    labels: ['TikTok', 'Instagram', 'YouTube'],
+                    datasets: [{
+                        label: 'Revenue (USD)',
+                        data: [0, 0, 0],
+                        backgroundColor: ['#fe8019', '#fabd2f', '#8ec07c'],
+                        borderColor: '#1d2021',
+                        borderWidth: 2
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    scales: {
+                        y: { beginAtZero: true, grid: { color: '#3c3836' } },
+                        x: { grid: { display: false } }
+                    },
+                    plugins: { legend: { display: false } }
+                }
+            });
+        }
+
+        // Calculation Logic (The "Intelligence")
+        function calculate() {
+            const platforms = [
+                { id: 'tk', name: 'TikTok', views: parseFloat(document.getElementById('tk-views').value) || 0, rev: parseFloat(document.getElementById('tk-rev').value) || 0 },
+                { id: 'ig', name: 'Instagram', views: parseFloat(document.getElementById('ig-views').value) || 0, rev: parseFloat(document.getElementById('ig-rev').value) || 0 },
+                { id: 'yt', name: 'YouTube', views: parseFloat(document.getElementById('yt-views').value) || 0, rev: parseFloat(document.getElementById('yt-rev').value) || 0 }
+            ];
+
+            // 1. Total Revenue
+            const total = platforms.reduce((acc, p) => acc + p.rev, 0);
+            document.getElementById('total-revenue').innerText = `$${total.toLocaleString()}`;
+
+            // 2. RPM Calculation (Revenue Per 1000 views)
+            platforms.forEach(p => {
+                p.rpm = p.views > 0 ? (p.rev / p.views) * 1000 : 0;
+            });
+
+            // 3. Find Winner
+            const winner = platforms.reduce((prev, current) => (prev.rev > current.rev) ? prev : current);
+            const highRPM = platforms.reduce((prev, current) => (prev.rpm > current.rpm) ? prev : current);
+
+            if (total > 0) {
+                document.getElementById('efficiency-leader').innerText = highRPM.name;
+                document.getElementById('insight-text').innerText = `Analysis complete. ${winner.name} is the primary revenue driver. However, ${highRPM.name} shows the highest resource efficiency with an RPM of $${highRPM.rpm.toFixed(2)}. Suggest scaling ${highRPM.name} for maximum edge growth.`;
+            }
+
+            // 4. Update Chart
+            chart.data.datasets[0].data = platforms.map(p => p.rev);
+            chart.update();
+
+            // 5. Sovereignty Mode: Save to LocalStorage
+            localStorage.setItem('localytics_data', JSON.stringify(platforms));
+        }
+
+        function loadSavedData() {
+            const saved = localStorage.getItem('localytics_data');
+            if (saved) {
+                const data = JSON.parse(saved);
+                data.forEach(p => {
+                    document.getElementById(`${p.id}-views`).value = p.views;
+                    document.getElementById(`${p.id}-rev`).value = p.rev;
+                });
+                calculate();
+            }
+        }
+
+        function resetData() {
+            localStorage.clear();
+            location.reload();
+        }
+
+        window.onload = () => {
+            initChart();
+            loadSavedData();
+        };
+    </script>
+</body>
+</html>
