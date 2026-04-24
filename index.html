@@ -3,90 +3,833 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Localytics | Edge Sovereignty Engine</title>
+    <title>SalesAI Analyzer | Intelligent Sales Problem Detector</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-    <link rel="stylesheet" href="styles.css">
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;700&display=swap');
+        :root { --dark: #0a0a0a; --accent: #ff6b00; --panel: #161616; --border: #2a2a2a; --glow: 0 0 10px rgba(255,107,0,0.3); }
+        body { background: linear-gradient(135deg, var(--dark) 0%, #1a1a2e 100%); color: #e0e0e0; font-family: 'JetBrains Mono', monospace; min-height: 100vh; }
+        .machine-border { border: 1px solid var(--border); box-shadow: var(--glow); transition: all 0.3s; }
+        .machine-border:hover { box-shadow: 0 0 20px rgba(255,107,0,0.5); }
+        .status-light { width: 10px; height: 10px; border-radius: 50%; background: #00ff88; box-shadow: 0 0 12px #00ff88; animation: pulse 2s infinite; }
+        @keyframes pulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.5; } }
+        input, select, textarea { background: #0f0f0f; border: 1px solid var(--border); color: var(--accent); padding: 8px 12px; border-radius: 4px; transition: border 0.2s; font-size: 0.85rem; }
+        input:focus, select:focus, textarea:focus { outline: none; border-color: var(--accent); box-shadow: var(--glow); }
+        th { text-align: left; font-size: 0.7rem; color: #888; text-transform: uppercase; padding: 10px 6px; border-bottom: 2px solid var(--border); letter-spacing: 0.5px; }
+        td { padding: 10px 6px; border-bottom: 1px solid #1a1a1a; font-size: 0.8rem; }
+        .stats-card { background: linear-gradient(145deg, var(--panel), #1a1a1a); }
+        .action-btn { background: linear-gradient(90deg, var(--accent), #ff8c00); color: black; font-weight: bold; border: none; padding: 8px 16px; border-radius: 6px; cursor: pointer; transition: transform 0.2s; font-size: 0.75rem; }
+        .action-btn:hover { transform: scale(1.05); }
+        .total-row { background: rgba(255,107,0,0.1); font-weight: bold; }
+        .problem-critical { border-left: 4px solid #ff4444; background: rgba(255,68,68,0.1); }
+        .problem-warning { border-left: 4px solid #ffaa00; background: rgba(255,170,0,0.1); }
+        .problem-info { border-left: 4px solid #4488ff; background: rgba(68,136,255,0.1); }
+        .solution-box { border: 1px solid #00ff88; background: rgba(0,255,136,0.05); }
+        .tab-active { border-bottom: 2px solid var(--accent); color: var(--accent); }
+        .data-input { width: 100%; max-width: 120px; }
+    </style>
 </head>
-<body class="p-6">
+<body class="p-4 md:p-8">
 
-    <div class="flex justify-between items-center mb-8 border-b-2 border-metal-border pb-4">
+    <header class="flex flex-col lg:flex-row justify-between items-start lg:items-center mb-6 border-b border-border/50 pb-4 gap-4">
         <div>
-            <h1 class="text-3xl font-bold tracking-tighter" style="color: var(--safety-orange)">LOCALYTICS_v1.0</h1>
-            [span_1](start_span)<p class="text-xs opacity-60 uppercase">Sub-theme: High-Performance Edge Sovereignty[span_1](end_span)</p>
+            <h1 class="text-2xl lg:text-3xl font-bold tracking-wider text-amber-400 drop-shadow-lg">SalesAI Analyzer</h1>
+            <p class="text-xs opacity-60 uppercase tracking-widest mt-1">Intelligent Problem Detection & Solutions</p>
         </div>
-        <div class="text-right">
-            <div class="text-xs uppercase mb-1">System Status</div>
-            <div class="text-sm font-bold">
-                <span class="status-blink mr-2"></span> 
-                [span_2](start_span)IMMUNE TO GLOBAL OUTAGES[span_2](end_span)
+        <div class="flex flex-wrap items-center gap-2 machine-border p-3 px-4 bg-gradient-to-r from-[#0f0f0f] to-[#161616]">
+            <div class="status-light"></div>
+            <span class="text-xs font-bold uppercase tracking-widest text-amber-400">AI Analysis Active</span>
+            <button onclick="document.getElementById('importFile').click()" class="action-btn text-xs">📥 Import Data</button>
+            <button onclick="loadSampleData()" class="action-btn text-xs bg-gradient-to-r from-blue-500 to-blue-600">📊 Load Sample</button>
+            <button onclick="clearAllData()" class="action-btn text-xs bg-gradient-to-r from-red-500 to-red-600">🗑️ Clear</button>
+            <input type="file" id="importFile" accept=".csv,.json,.txt" class="hidden" onchange="importFile(event)">
+        </div>
+    </header>
+
+    <!-- Quick Data Input -->
+    <div class="bg-gradient-to-br from-[#0f0f0f] to-[#161616] machine-border rounded-xl p-4 mb-6">
+        <div class="flex flex-wrap items-center gap-2 mb-3">
+            <h2 class="text-sm font-bold uppercase tracking-wider text-amber-400">Quick Data Input</h2>
+            <span class="text-xs opacity-50">(Paste CSV: Category,Product,Units,Cost,Price)</span>
+        </div>
+        <div class="flex gap-2">
+            <textarea id="quickInput" rows="1" placeholder="Electronics,Widget A,100,10,25" class="flex-1 min-w-[200px] text-xs"></textarea>
+            <button onclick="parseQuickInput()" class="action-btn text-xs">➕ Add</button>
+            <button onclick="analyzeAll()" class="action-btn text-xs bg-gradient-to-r from-green-500 to-green-600">🔍 Analyze</button>
+        </div>
+    </div>
+
+    <!-- Stats Cards -->
+    <div class="grid grid-cols-2 lg:grid-cols-5 gap-3 mb-6">
+        <div class="stats-card machine-border p-4 text-center rounded-xl">
+            <div class="text-xl font-bold text-amber-400" id="total-revenue">$0</div>
+            <div class="text-xs uppercase opacity-60 mt-1">Revenue</div>
+        </div>
+        <div class="stats-card machine-border p-4 text-center rounded-xl">
+            <div class="text-xl font-bold text-emerald-400" id="total-profit">$0</div>
+            <div class="text-xs uppercase opacity-60 mt-1">Profit</div>
+        </div>
+        <div class="stats-card machine-border p-4 text-center rounded-xl">
+            <div class="text-xl font-bold text-blue-400" id="avg-margin">0%</div>
+            <div class="text-xs uppercase opacity-60 mt-1">Avg Margin</div>
+        </div>
+        <div class="stats-card machine-border p-4 text-center rounded-xl">
+            <div class="text-xl font-bold text-purple-400" id="total-items">0</div>
+            <div class="text-xs uppercase opacity-60 mt-1">Products</div>
+        </div>
+        <div class="stats-card machine-border p-4 text-center rounded-xl">
+            <div class="text-xl font-bold" id="health-score">--</div>
+            <div class="text-xs uppercase opacity-60 mt-1">Health Score</div>
+        </div>
+    </div>
+
+    <!-- Tabs -->
+    <div class="flex gap-4 mb-4 border-b border-border/50 overflow-x-auto">
+        <button onclick="showTab('data')" id="tab-data" class="tab-active pb-2 px-3 text-sm font-bold uppercase">📋 Data</button>
+        <button onclick="showTab('problems')" id="tab-problems" class="pb-2 px-3 text-sm font-bold uppercase opacity-60">⚠️ Problems</button>
+        <button onclick="showTab('solutions')" id="tab-solutions" class="pb-2 px-3 text-sm font-bold uppercase opacity-60">💡 Solutions</button>
+        <button onclick="showTab('trends')" id="tab-trends" class="pb-2 px-3 text-sm font-bold uppercase opacity-60">📈 Trends</button>
+    </div>
+
+    <!-- Data Tab -->
+    <div id="panel-data" class="grid grid-cols-1 xl:grid-cols-3 gap-6">
+        <div class="xl:col-span-2 space-y-4">
+            <div class="bg-gradient-to-br from-[#0f0f0f] to-[#161616] machine-border rounded-xl p-4">
+                <div class="flex justify-between items-center mb-4">
+                    <h3 class="text-sm font-bold border-l-3 border-amber-500 pl-3 uppercase">Sales Data</h3>
+                    <button onclick="addRow()" class="text-xs border border-amber-500 text-amber-400 px-4 py-1 font-bold hover:bg-amber-500 hover:text-black rounded-full">+ Add</button>
+                </div>
+                <div class="overflow-x-auto">
+                    <table class="w-full text-xs">
+                        <thead>
+                            <tr>
+                                <th>Category</th>
+                                <th>Product</th>
+                                <th>Units</th>
+                                <th>Cost</th>
+                                <th>Price</th>
+                                <th>Margin</th>
+                                <th>Profit</th>
+                                <th>Status</th>
+                                <th>Action</th>
+                            </tr>
+                        </thead>
+                        <tbody id="sales-body"></tbody>
+                    </table>
+                </div>
+            </div>
+            <div class="grid grid-cols-1 lg:grid-cols-2 gap-4">
+                <div class="bg-gradient-to-br from-[#0f0f0f] to-[#161616] machine-border rounded-xl p-4 h-64">
+                    <h3 class="text-xs font-bold uppercase opacity-70 mb-3">Profit by Product</h3>
+                    <canvas id="profitChart"></canvas>
+                </div>
+                <div class="bg-gradient-to-br from-[#0f0f0f] to-[#161616] machine-border rounded-xl p-4 h-64">
+                    <h3 class="text-xs font-bold uppercase opacity-70 mb-3">Margin Distribution</h3>
+                    <canvas id="marginChart"></canvas>
+                </div>
+            </div>
+        </div>
+
+        <!-- Analysis Panel -->
+        <div class="xl:col-span-1">
+            <div class="bg-gradient-to-br from-red-900/20 to-red-900/10 machine-border rounded-xl p-4 border-red-500/30">
+                <h3 class="text-sm font-bold text-red-400 uppercase mb-4 border-b border-red-500/30 pb-2">// Real-time Analysis</h3>
+                <div id="analysis-log" class="space-y-3 max-h-[300px] overflow-y-auto text-xs"></div>
             </div>
         </div>
     </div>
 
-    <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        
-        <div class="engine-card p-6 rounded-sm lg:col-span-1">
-            <h2 class="text-xl mb-4 border-l-4 border-orange-600 pl-3 font-bold">DATA_INPUT</h2>
-            <div id="input-container" class="space-y-6">
-                <div class="platform-group">
-                    <label class="block text-xs uppercase mb-2 text-gray-400">TikTok Engine</label>
-                    <div class="grid grid-cols-2 gap-2">
-                        <input type="number" id="tk-views" placeholder="Views" class="w-full" oninput="calculate()">
-                        <input type="number" id="tk-rev" placeholder="Revenue ($)" class="w-full" oninput="calculate()">
-                    </div>
-                </div>
-                <div class="platform-group">
-                    <label class="block text-xs uppercase mb-2 text-gray-400">Instagram Engine</label>
-                    <div class="grid grid-cols-2 gap-2">
-                        <input type="number" id="ig-views" placeholder="Views" class="w-full" oninput="calculate()">
-                        <input type="number" id="ig-rev" placeholder="Revenue ($)" class="w-full" oninput="calculate()">
-                    </div>
-                </div>
-                <div class="platform-group">
-                    <label class="block text-xs uppercase mb-2 text-gray-400">YouTube Engine</label>
-                    <div class="grid grid-cols-2 gap-2">
-                        <input type="number" id="yt-views" placeholder="Views" class="w-full" oninput="calculate()">
-                        <input type="number" id="yt-rev" placeholder="Revenue ($)" class="w-full" oninput="calculate()">
-                    </div>
-                </div>
-            </div>
-            <button onclick="resetData()" class="mt-8 text-xs underline opacity-50 hover:opacity-100 uppercase">Wipe Local Storage</button>
-        </div>
+    <!-- Problems Tab -->
+    <div id="panel-problems" class="hidden space-y-4">
+        <div id="problems-list" class="grid grid-cols-1 md:grid-cols-2 gap-4"></div>
+    </div>
 
-        <div class="lg:col-span-2 space-y-6">
+    <!-- Solutions Tab -->
+    <div id="panel-solutions" class="hidden space-y-4">
+        <div id="solutions-list" class="grid grid-cols-1 gap-4"></div>
+    </div>
+
+    <!-- Trends Tab -->
+    <div id="panel-trends" class="hidden space-y-4">
+        <div class="grid grid-cols-1 lg:grid-cols-2 gap-4">
+            <div class="bg-gradient-to-br from-[#0f0f0f] to-[#161616] machine-border rounded-xl p-4 h-80">
+                <h3 class="text-xs font-bold uppercase opacity-70 mb-3">Category Performance</h3>
+                <canvas id="categoryChart"></canvas>
+            </div>
+            <div class="bg-gradient-to-br from-[#0f0f0f] to-[#161616] machine-border rounded-xl p-4 h-80">
+                <h3 class="text-xs font-bold uppercase opacity-70 mb-3">Top/Bottom Performers</h3>
+                <canvas id="rankingChart"></canvas>
+            </div>
+        </div>
+        <div class="bg-gradient-to-br from-[#0f0f0f] to-[#161616] machine-border rounded-xl p-4">
+            <h3 class="text-xs font-bold uppercase opacity-70 mb-3">Insights Summary</h3>
+            <div id="insights-summary" class="grid grid-cols-1 md:grid-cols-3 gap-4"></div>
+        </div>
+    </div>
+
+    <script>
+        let salesData = JSON.parse(localStorage.getItem('salesAI_data')) || [];
+        let profitChart, marginChart, categoryChart, rankingChart;
+        let detectedProblems = [];
+        let generatedSolutions = [];
+
+        // Initialize
+        document.addEventListener('DOMContentLoaded', () => {
+            if (salesData.length > 0) {
+                updateTable();
+                updateStats();
+                analyzeAll();
+            }
+        });
+
+        function addRow(group = '', name = '', units = 0, cost = 0, price = 0) {
+            const tbody = document.getElementById('sales-body');
+            const row = document.createElement('tr');
+            const margin = price > 0 ? ((price - cost) / price * 100) : 0;
+            const profit = (price - cost) * units;
+            const status = getStatus(margin, profit);
             
-            <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
-                <div class="engine-card p-4">
-                    <div class="text-xs uppercase opacity-60">Total Revenue</div>
-                    <div id="total-revenue" class="text-3xl font-bold">$0.00</div>
-                </div>
-                <div class="engine-card p-4">
-                    <div class="text-xs uppercase opacity-60">Efficiency Leader</div>
-                    <div id="efficiency-leader" class="text-xl font-bold text-orange-500">N/A</div>
-                </div>
-                <div class="engine-card p-4" style="border-color: var(--safety-orange)">
-                    <div class="text-xs uppercase opacity-60">Latency Status</div>
-                    <div class="text-xl font-bold">ZERO_MS</div>
-                </div>
-            </div>
+            row.innerHTML = `
+                <td><input type="text" value="${group}" onchange="updateData()" class="data-input" placeholder="Category"></td>
+                <td><input type="text" value="${name}" onchange="updateData()" class="data-input" placeholder="Product"></td>
+                <td><input type="number" value="${units}" onchange="updateData()" class="data-input" min="0"></td>
+                <td><input type="number" value="${cost}" onchange="updateData()" class="data-input" min="0" step="0.01"></td>
+                <td><input type="number" value="${price}" onchange="updateData()" class="data-input" min="0" step="0.01"></td>
+                <td class="font-mono ${margin < 10 ? 'text-red-400' : margin < 20 ? 'text-yellow-400' : 'text-emerald-400'}">${margin.toFixed(1)}%</td>
+                <td class="font-mono ${profit < 0 ? 'text-red-400' : 'text-amber-400'}">$${formatNumber(profit)}</td>
+                <td><span class="text-xs px-2 py-1 rounded ${status.class}">${status.label}</span></td>
+                <td><button onclick="deleteRow(this)" class="text-red-400 hover:text-red-200 text-xs">DEL</button></td>
+            `;
+            tbody.appendChild(row);
+        }
 
-            <div class="engine-card p-6">
-                <h2 class="text-xl mb-4 font-bold uppercase">Revenue_Comparison_Graph</h2>
-                <div class="h-64">
-                    <canvas id="revenueChart"></canvas>
-                </div>
-            </div>
+        function getStatus(margin, profit) {
+            if (margin < 5 || profit < 0) return { label: 'CRITICAL', class: 'bg-red-500/20 text-red-400' };
+            if (margin < 10) return { label: 'WARNING', class: 'bg-yellow-500/20 text-yellow-400' };
+            if (margin < 20) return { label: 'LOW', class: 'bg-orange-500/20 text-orange-400' };
+            return { label: 'HEALTHY', class: 'bg-green-500/20 text-green-400' };
+        }
 
-            <div class="engine-card p-6 bg-black">
-                <h2 class="text-xl mb-2 font-bold text-yellow-500 uppercase font-bold">// LOCAL_INSIGHTS</h2>
-                <p id="insight-text" class="text-sm leading-relaxed italic">
-                    Engine standby. Feed data into the machine to generate local-first financial intelligence...
-                </p>
-            </div>
-        </div>
-    </div>
+        function deleteRow(btn) {
+            btn.closest('tr').remove();
+            updateData();
+        }
 
-    <script src="script.js"></script>
+        function formatNumber(num) {
+            return Math.abs(num) > 999 ? Math.sign(num)*((Math.abs(num)/1000).toFixed(1)) + 'k' : Math.round(num);
+        }
+
+        function updateStats() {
+            const totalRevenue = salesData.reduce((sum, p) => sum + (p.units || 0) * (p.price || 0), 0);
+            const totalProfit = salesData.reduce((sum, p) => sum + (p.units || 0) * ((p.price || 0) - (p.cost || 0)), 0);
+            const totalCost = salesData.reduce((sum, p) => sum + (p.units || 0) * (p.cost || 0), 0);
+            const avgMargin = totalRevenue > 0 ? ((totalRevenue - totalCost) / totalRevenue * 100) : 0;
+            
+            document.getElementById('total-revenue').textContent = `$${totalRevenue.toLocaleString()}`;
+            document.getElementById('total-profit').textContent = `$${totalProfit.toLocaleString()}`;
+            document.getElementById('avg-margin').textContent = `${avgMargin.toFixed(1)}%`;
+            document.getElementById('total-items').textContent = salesData.length;
+
+            // Health Score
+            let healthScore = 100;
+            const issues = salesData.filter(p => {
+                const margin = p.price > 0 ? ((p.price - p.cost) / p.price * 100) : 0;
+                return margin < 10 || ((p.price - p.cost) * p.units) < 0;
+            });
+            healthScore = Math.max(0, 100 - (issues.length * 15));
+            const healthEl = document.getElementById('health-score');
+            healthEl.textContent = `${healthScore}%`;
+            healthEl.className = `text-xl font-bold ${healthScore >= 70 ? 'text-green-400' : healthScore >= 40 ? 'text-yellow-400' : 'text-red-400'}`;
+        }
+
+        function updateData() {
+            const rows = document.querySelectorAll('#sales-body tr');
+            salesData = [];
+            rows.forEach((row, i) => {
+                const inputs = row.querySelectorAll('input');
+                if (inputs.length >= 5) {
+                    const units = parseFloat(inputs[2].value) || 0;
+                    const cost = parseFloat(inputs[3].value) || 0;
+                    const price = parseFloat(inputs[4].value) || 0;
+                    salesData.push({
+                        group: inputs[0].value || 'Uncategorized',
+                        name: inputs[1].value || `Product ${i+1}`,
+                        units: units,
+                        cost: cost,
+                        price: price
+                    });
+                }
+            });
+            
+            updateTable();
+            updateStats();
+            analyzeAll();
+            renderCharts();
+            localStorage.setItem('salesAI_data', JSON.stringify(salesData));
+        }
+
+        function updateTable() {
+            const tbody = document.getElementById('sales-body');
+            tbody.innerHTML = '';
+            salesData.forEach(p => addRow(p.group, p.name, p.units, p.cost, p.price));
+        }
+
+        // ==================== CORE ANALYSIS ENGINE ====================
+        function analyzeAll() {
+            detectedProblems = [];
+            generatedSolutions = [];
+            const log = document.getElementById('analysis-log');
+            log.innerHTML = '';
+
+            if (salesData.length === 0) {
+                log.innerHTML = '<p class="opacity-50 italic">No data to analyze. Import data or add products.</p>';
+                return;
+            }
+
+            // 1. Margin Analysis
+            analyzeMargins();
+            
+            // 2. Profit Analysis
+            analyzeProfits();
+            
+            // 3. Volume Analysis
+            analyzeVolume();
+            
+            // 4. Category Analysis
+            analyzeCategories();
+            
+            // 5. Generate Solutions
+            generateSolutions();
+
+            // Update panels
+            renderProblemsPanel();
+            renderSolutionsPanel();
+            renderTrends();
+        }
+
+        function analyzeMargins() {
+            salesData.forEach((p, i) => {
+                const margin = p.price > 0 ? ((p.price - p.cost) / p.price * 100) : 0;
+                const profit = (p.price - p.cost) * p.units;
+                
+                if (margin < 0) {
+                    detectedProblems.push({
+                        type: 'CRITICAL',
+                        product: p.name,
+                        issue: `Negative margin (${margin.toFixed(1)}%) - Selling below cost!`,
+                        impact: `Loss of $${Math.abs(profit).toLocaleString()}`,
+                        severity: 100
+                    });
+                    addLog(`❌ ${p.name}: NEGATIVE MARGIN - ${margin.toFixed(1)}%`);
+                } else if (margin < 5) {
+                    detectedProblems.push({
+                        type: 'CRITICAL',
+                        product: p.name,
+                        issue: `Very low margin (${margin.toFixed(1)}%) - Near break-even`,
+                        impact: `Minimal profit: $${profit.toLocaleString()}`,
+                        severity: 90
+                    });
+                    addLog(`🔴 ${p.name}: Critical margin - ${margin.toFixed(1)}%`);
+                } else if (margin < 10) {
+                    detectedProblems.push({
+                        type: 'WARNING',
+                        product: p.name,
+                        issue: `Low margin (${margin.toFixed(1)}%) - Need improvement`,
+                        impact: `Profit: $${profit.toLocaleString()}`,
+                        severity: 70
+                    });
+                    addLog(`🟡 ${p.name}: Low margin - ${margin.toFixed(1)}%`);
+                } else if (margin > 50) {
+                    addLog(`✅ ${p.name}: Excellent margin - ${margin.toFixed(1)}%`);
+                }
+            });
+        }
+
+        function analyzeProfits() {
+            salesData.forEach(p => {
+                const profit = (p.price - p.cost) * p.units;
+                if (profit < 0) {
+                    detectedProblems.push({
+                        type: 'CRITICAL',
+                        product: p.name,
+                        issue: `Total loss of $${Math.abs(profit).toLocaleString()}`,
+                        impact: 'Negative total profit',
+                        severity: 100
+                    });
+                }
+            });
+
+            // Find lowest profit products
+            const sorted = [...salesData].sort((a, b) => {
+                const pa = (a.price - a.cost) * a.units;
+                const pb = (b.price - b.cost) * b.units;
+                return pa - pb;
+            });
+
+            sorted.slice(0, 3).forEach(p => {
+                const profit = (p.price - p.cost) * p.units;
+                if (profit < 100) {
+                    detectedProblems.push({
+                        type: 'INFO',
+                        product: p.name,
+                        issue: `Low profit earner: $${profit.toLocaleString()}`,
+                        impact: 'Consider promoting or discontinuing',
+                        severity: 30
+                    });
+                }
+            });
+        }
+
+        function analyzeVolume() {
+            const zeroSales = salesData.filter(p => p.units === 0);
+            if (zeroSales.length > 0) {
+                zeroSales.forEach(p => {
+                    detectedProblems.push({
+                        type: 'WARNING',
+                        product: p.name,
+                        issue: 'Zero units sold',
+                        impact: 'No revenue generated',
+                        severity: 50
+                    });
+                });
+                addLog(`⚠️ ${zeroSales.length} products with zero sales`);
+            }
+
+            const lowVolume = salesData.filter(p => p.units > 0 && p.units < 10);
+            if (lowVolume.length > 0) {
+                addLog(`📉 ${lowVolume.length} products with low volume (<10 units)`);
+            }
+        }
+
+        function analyzeCategories() {
+            const categoryStats = {};
+            salesData.forEach(p => {
+                if (!categoryStats[p.group]) {
+                    categoryStats[p.group] = { revenue: 0, profit: 0, count: 0 };
+                }
+                categoryStats[p.group].revenue += p.units * p.price;
+                categoryStats[p.group].profit += p.units * (p.price - p.cost);
+                categoryStats[p.group].count++;
+            });
+
+            Object.entries(categoryStats).forEach(([cat, stats]) => {
+                const margin = stats.revenue > 0 ? (stats.profit / stats.revenue * 100) : 0;
+                if (margin < 10) {
+                    detectedProblems.push({
+                        type: 'WARNING',
+                        product: cat,
+                        issue: `Category low margin: ${margin.toFixed(1)}%`,
+                        impact: `Revenue: $${stats.revenue.toLocaleString()}`,
+                        severity: 60
+                    });
+                }
+            });
+        }
+
+        function generateSolutions() {
+            // Group problems by type
+            const marginIssues = detectedProblems.filter(p => p.type === 'CRITICAL' && p.issue.includes('margin'));
+            const profitIssues = detectedProblems.filter(p => p.type === 'CRITICAL' && p.issue.includes('loss'));
+            const volumeIssues = detectedProblems.filter(p => p.issue.includes('Zero') || p.issue.includes('low'));
+
+            // Generate targeted solutions
+            if (marginIssues.length > 0) {
+                generatedSolutions.push({
+                    title: 'Increase Margins',
+                    priority: 'HIGH',
+                    actions: [
+                        'Review pricing strategy - consider 10-20% price increase',
+                        'Negotiate better supplier costs',
+                        'Bundle low-margin products with high-margin ones',
+                        'Reduce operational costs'
+                    ]
+                });
+            }
+
+            if (profitIssues.length > 0) {
+                generatedSolutions.push({
+                    title: 'Stop Losses',
+                    priority: 'CRITICAL',
+                    actions: [
+                        'Immediately review products with negative margin',
+                        'Consider discontinuing loss-making items',
+                        'Run promotions to clear inventory',
+                        'Negotiate bulk discounts with suppliers'
+                    ]
+                });
+            }
+
+            if (volumeIssues.length > 0) {
+                generatedSolutions.push({
+                    title: 'Boost Sales Volume',
+                    priority: 'MEDIUM',
+                    actions: [
+                        'Implement targeted marketing campaigns',
+                        'Create bundle deals for slow-moving items',
+                        'Offer limited-time discounts',
+                        'Improve product visibility and placement'
+                    ]
+                });
+            }
+
+            // Always provide general recommendations
+            if (salesData.length > 0) {
+                const avgMargin = salesData.reduce((sum, p) => sum + (p.price > 0 ? (p.price - p.cost) / p.price * 100 : 0), 0) / salesData.length;
+                
+                generatedSolutions.push({
+                    title: avgMargin < 20 ? 'Improve Overall Margins' : 'Maintain Performance',
+                    priority: avgMargin < 20 ? 'HIGH' : 'LOW',
+                    actions: avgMargin < 20 ? [
+                        'Aim for 20%+ margin on all products',
+                        'Regularly review and adjust pricing',
+                        'Monitor competitor pricing',
+                        'Focus on high-margin product categories'
+                    ] : [
+                        'Continue current pricing strategy',
+                        'Monitor margins monthly',
+                        'Document successful pricing decisions'
+                    ]
+                });
+            }
+
+            // Add category-specific solutions
+            const categoryPerformance = {};
+            salesData.forEach(p => {
+                if (!categoryPerformance[p.group]) categoryPerformance[p.group] = [];
+                categoryPerformance[p.group].push(p);
+            });
+
+            Object.entries(categoryPerformance).forEach(([cat, products]) => {
+                const avgMargin = products.reduce((sum, p) => sum + (p.price > 0 ? (p.price - p.cost) / p.price * 100 : 0), 0) / products.length;
+                if (avgMargin < 15) {
+                    generatedSolutions.push({
+                        title: `Optimize ${cat} Category`,
+                        priority: 'MEDIUM',
+                        actions: [
+                            `Review all ${products.length} products in ${cat}`,
+                            'Identify bestsellers and promote them',
+                            'Consider phasing out underperformers',
+                            'Analyze customer preferences for this category'
+                        ]
+                    });
+                }
+            });
+        }
+
+        function addLog(message) {
+            const log = document.getElementById('analysis-log');
+            const time = new Date().toLocaleTimeString();
+            log.innerHTML = `<p class="opacity-70">${time} - ${message}</p>` + log.innerHTML;
+            if (log.children.length > 20) {
+                log.removeChild(log.lastChild);
+            }
+        }
+
+        // ==================== UI RENDERING ====================
+        function renderProblemsPanel() {
+            const container = document.getElementById('problems-list');
+            container.innerHTML = '';
+
+            if (detectedProblems.length === 0) {
+                container.innerHTML = `
+                    <div class="col-span-2 p-6 text-center machine-border rounded-xl">
+                        <div class="text-4xl mb-2">✅</div>
+                        <div class="text-green-400 font-bold">No Problems Detected!</div>
+                        <div class="text-xs opacity-60 mt-2">Your sales data looks healthy.</div>
+                    </div>
+                `;
+                return;
+            }
+
+            // Sort by severity
+            const sorted = [...detectedProblems].sort((a, b) => b.severity - a.severity);
+            
+            sorted.forEach(problem => {
+                const severityClass = problem.type === 'CRITICAL' ? 'problem-critical' : 
+                                     problem.type === 'WARNING' ? 'problem-warning' : 'problem-info';
+                container.innerHTML += `
+                    <div class="p-4 rounded-xl ${severityClass}">
+                        <div class="flex justify-between items-start mb-2">
+                            <span class="text-xs font-bold ${problem.type === 'CRITICAL' ? 'text-red-400' : problem.type === 'WARNING' ? 'text-yellow-400' : 'text-blue-400'}">${problem.type}</span>
+                            <span class="text-xs opacity-50">${problem.product}</span>
+                        </div>
+                        <div class="font-bold text-sm mb-1">${problem.issue}</div>
+                        <div class="text-xs opacity-70">${problem.impact}</div>
+                    </div>
+                `;
+            });
+        }
+
+        function renderSolutionsPanel() {
+            const container = document.getElementById('solutions-list');
+            container.innerHTML = '';
+
+            if (generatedSolutions.length === 0) {
+                container.innerHTML = `
+                    <div class="p-6 text-center machine-border rounded-xl">
+                        <div class="text-4xl mb-2">💡</div>
+                        <div class="text-amber-400 font-bold">No Solutions Needed</div>
+                    </div>
+                `;
+                return;
+            }
+
+            generatedSolutions.forEach(sol => {
+                const priorityColor = sol.priority === 'CRITICAL' ? 'text-red-400 border-red-500' :
+                                     sol.priority === 'HIGH' ? 'text-yellow-400 border-yellow-500' :
+                                     sol.priority === 'MEDIUM' ? 'text-blue-400 border-blue-500' : 'text-green-400 border-green-500';
+                container.innerHTML += `
+                    <div class="p-4 rounded-xl solution-box">
+                        <div class="flex justify-between items-start mb-3">
+                            <span class="font-bold text-sm">${sol.title}</span>
+                            <span class="text-xs px-2 py-1 rounded border ${priorityColor}">${sol.priority} PRIORITY</span>
+                        </div>
+                        <ul class="space-y-2">
+                            ${sol.actions.map(a => `<li class="text-xs opacity-80 flex items-start gap-2"><span>→</span>${a}</li>`).join('')}
+                        </ul>
+                    </div>
+                `;
+            });
+        }
+
+        function renderTrends() {
+            // Category Chart
+            const ctxCat = document.getElementById('categoryChart')?.getContext('2d');
+            if (ctxCat) {
+                const categoryData = {};
+                salesData.forEach(p => {
+                    if (!categoryData[p.group]) categoryData[p.group] = 0;
+                    categoryData[p.group] += p.units * (p.price - p.cost);
+                });
+                
+                if (categoryChart) categoryChart.destroy();
+                categoryChart = new Chart(ctxCat, {
+                    type: 'doughnut',
+                    data: {
+                        labels: Object.keys(categoryData),
+                        datasets: [{
+                            data: Object.values(categoryData),
+                            backgroundColor: ['#ff6b00', '#00ff88', '#4488ff', '#ff4488', '#ffff44', '#44ffff']
+                        }]
+                    },
+                    options: { 
+                        responsive: true, 
+                        maintainAspectRatio: false,
+                        plugins: { legend: { position: 'bottom', labels: { color: '#ccc', font: { size: 10 } } } }
+                    }
+                });
+            }
+
+            // Ranking Chart
+            const ctxRank = document.getElementById('rankingChart')?.getContext('2d');
+            if (ctxRank) {
+                const sorted = [...salesData].sort((a, b) => (b.price - b.cost) * b.units - (a.price - a.cost) * a.units);
+                const top5 = sorted.slice(0, 5);
+                const bottom5 = sorted.slice(-5).reverse();
+                const combined = [...top5, ...bottom5];
+                
+                if (rankingChart) rankingChart.destroy();
+                rankingChart = new Chart(ctxRank, {
+                    type: 'bar',
+                    data: {
+                        labels: combined.map(p => p.name.slice(0,8)),
+                        datasets: [{
+                            label: 'Profit',
+                            data: combined.map(p => (p.price - p.cost) * p.units),
+                            backgroundColor: combined.map((p, i) => i < 5 ? '#00ff88' : '#ff4444')
+                        }]
+                    },
+                    options: { 
+                        responsive: true, 
+                        maintainAspectRatio: false,
+                        indexAxis: 'y',
+                        plugins: { legend: { display: false } },
+                        scales: { x: { grid: { color: '#333' }, ticks: { color: '#999' } }, y: { grid: { display: false }, ticks: { color: '#999' } } }
+                    }
+                });
+            }
+
+            // Insights Summary
+            const summary = document.getElementById('insights-summary');
+            if (summary && salesData.length > 0) {
+                const best = [...salesData].sort((a, b) => (b.price - b.cost) * b.units - (a.price - a.cost) * a.units)[0];
+                const worst = [...salesData].sort((a, b) => (a.price - a.cost) * a.units - (b.price - b.cost) * b.units)[0];
+                const avgMargin = salesData.reduce((sum, p) => sum + (p.price > 0 ? (p.price - p.cost) / p.price * 100 : 0), 0) / salesData.length;
+                
+                summary.innerHTML = `
+                    <div class="p-3 rounded-lg bg-green-500/10 border border-green-500/30">
+                        <div class="text-xs text-green-400 uppercase">Best Performer</div>
+                        <div class="font-bold text-sm">${best?.name || 'N/A'}</div>
+                        <div class="text-xs opacity-70">$${((best?.price - best?.cost) * best?.units).toLocaleString()} profit</div>
+                    </div>
+                    <div class="p-3 rounded-lg bg-red-500/10 border border-red-500/30">
+                        <div class="text-xs text-red-400 uppercase">Needs Attention</div>
+                        <div class="font-bold text-sm">${worst?.name || 'N/A'}</div>
+                        <div class="text-xs opacity-70">${worst?.price > 0 ? ((worst.price - worst.cost) / worst.price * 100).toFixed(1) : 0}% margin</div>
+                    </div>
+                    <div class="p-3 rounded-lg bg-blue-500/10 border border-blue-500/30">
+                        <div class="text-xs text-blue-400 uppercase">Average Margin</div>
+                        <div class="font-bold text-sm">${avgMargin.toFixed(1)}%</div>
+                        <div class="text-xs opacity-70">${avgMargin >= 20 ? '✅ Healthy' : '⚠️ Needs improvement'}</div>
+                    </div>
+                `;
+            }
+        }
+
+        function renderCharts() {
+            const ctxP = document.getElementById('profitChart')?.getContext('2d');
+            const ctxM = document.getElementById('marginChart')?.getContext('2d');
+
+            if (!ctxP || !ctxM) return;
+
+            const profitData = salesData.map(p => (p.price - p.cost) * p.units);
+            const marginData = salesData.map(p => p.price > 0 ? ((p.price - p.cost) / p.price * 100) : 0);
+            const labels = salesData.map(p => p.name.slice(0,12));
+
+            if (profitChart) profitChart.destroy();
+            if (marginChart) marginChart.destroy();
+
+            profitChart = new Chart(ctxP, {
+                type: 'bar',
+                data: {
+                    labels,
+                    datasets: [{ 
+                        label: 'Profit',
+                        data: profitData, 
+                        backgroundColor: profitData.map(v => v < 0 ? '#ff4444' : '#ff6b00'),
+                        borderRadius: 4
+                    }]
+                },
+                options: { 
+                    responsive: true, 
+                    maintainAspectRatio: false,
+                    plugins: { legend: { display: false } },
+                    scales: { y: { grid: { color: '#333' }, ticks: { color: '#999' } }, x: { grid: { display: false }, ticks: { color: '#999', font: { size: 9 } } } }
+                }
+            });
+
+            marginChart = new Chart(ctxM, {
+                type: 'line',
+                data: {
+                    labels,
+                    datasets: [{ 
+                        label: 'Margin %',
+                        data: marginData, 
+                        borderColor: '#00ff88',
+                        backgroundColor: 'rgba(0,255,136,0.1)',
+                        fill: true,
+                        tension: 0.4
+                    }]
+                },
+                options: { 
+                    responsive: true, 
+                    maintainAspectRatio: false,
+                    plugins: { legend: { display: false } },
+                    scales: { y: { grid: { color: '#333' }, ticks: { color: '#999' } }, x: { grid: { display: false }, ticks: { color: '#999', font: { size: 9 } } } }
+                }
+            });
+        }
+
+        // ==================== TAB SWITCHING ====================
+        function showTab(tab) {
+            ['data', 'problems', 'solutions', 'trends'].forEach(t => {
+                document.getElementById(`tab-${t}`).classList.toggle('tab-active', t === tab);
+                document.getElementById(`panel-${t}`).classList.toggle('hidden', t !== tab);
+            });
+        }
+
+        // ==================== DATA IMPORT ====================
+        function parseQuickInput() {
+            const input = document.getElementById('quickInput').value.trim();
+            if (!input) return;
+            
+            const parts = input.split(',').map(p => p.trim());
+            if (parts.length >= 3) {
+                salesData.push({
+                    group: parts[0] || 'Imported',
+                    name: parts[1] || 'Product',
+                    units: parseFloat(parts[2]) || 0,
+                    cost: parseFloat(parts[3]) || 0,
+                    price: parseFloat(parts[4]) || 0
+                });
+                document.getElementById('quickInput').value = '';
+                updateTable();
+                updateStats();
+                analyzeAll();
+                renderCharts();
+                localStorage.setItem('salesAI_data', JSON.stringify(salesData));
+                addLog(`✅ Added: ${parts[1]}`);
+            }
+        }
+
+        function importFile(event) {
+            const file = event.target.files[0];
+            if (!file) return;
+            
+            const reader = new FileReader();
+            reader.onload = function(e) {
+                const content = e.target.result;
+                const lines = content.trim().split('\n');
+                
+                // Try to detect format and parse
+                lines.forEach((line, i) => {
+                    if (i === 0 && line.toLowerCase().includes('category')) return; // Skip header
+                    const parts = line.split(',').map(p => p.trim());
+                    if (parts.length >= 3) {
+                        salesData.push({
+                            group: parts[0] || 'Imported',
+                            name: parts[1] || `Item ${i}`,
+                            units: parseFloat(parts[2]) || 0,
+                            cost: parseFloat(parts[3]) || 0,
+                            price: parseFloat(parts[4]) || 0
+                        });
+                    }
+                });
+                
+                updateTable();
+                updateStats();
+                analyzeAll();
+                renderCharts();
+                localStorage.setItem('salesAI_data', JSON.stringify(salesData));
+                addLog(`📥 Imported ${salesData.length} products`);
+                event.target.value = '';
+            };
+            reader.readAsText(file);
+        }
+
+        function loadSampleData() {
+            salesData = [
+                { group: 'Electronics', name: 'Wireless Headphones', units: 150, cost: 45, price: 89 },
+                { group: 'Electronics', name: 'USB-C Cable', units: 500, cost: 3, price: 12 },
+                { group: 'Clothing', name: 'Cotton T-Shirt', units: 200, cost: 8, price: 25 },
+                { group: 'Clothing', name: 'Denim Jeans', units: 80, cost: 25, price: 65 },
+                { group: 'Home', name: 'LED Desk Lamp', units: 120, cost: 15, price: 35 },
+                { group: 'Home', name: 'Storage Box', units: 300, cost: 4, price: 15 },
+                { group: 'Electronics', name: 'Webcam HD', units: 45, cost: 30, price: 55 },
+                { group: 'Clothing', name: 'Winter Jacket', units: 30, cost: 40, price: 75 },
+                { group: 'Home', name: 'Coffee Mug Set', units: 180, cost: 6, price: 18 },
+                { group: 'Electronics', name: 'Phone Stand', units: 250, cost: 2, price: 8 }
+            ];
+            updateTable();
+            updateStats();
+            analyzeAll();
+            renderCharts();
+            localStorage.setItem('salesAI_data', JSON.stringify(salesData));
+            addLog('📊 Sample data loaded');
+        }
+
+        function clearAllData() {
+            if (confirm('Clear all data?')) {
+                salesData = [];
+                updateTable();
+                updateStats();
+                analyzeAll();
+                renderCharts();
+                localStorage.removeItem('salesAI_data');
+                addLog('🗑️ All data cleared');
+            }
+        }
+    </script>
 </body>
 </html>
